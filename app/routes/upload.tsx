@@ -5,7 +5,6 @@ import FileUploader from "~/components/FileUploader";
 import { usePuterStore } from "~/lib/puter";
 import { useNavigate } from "react-router";
 import { generateUUID } from "~/lib/util";
-import { prepareInstructions, AIResponseFormat } from "../../constants";
 
 const upload = () => {
     const { auth, isLoading, fs, ai, kv } = usePuterStore();
@@ -44,30 +43,50 @@ const upload = () => {
             feedback: ''
         }
         await kv.set(`resume:${uuid}`, JSON.stringify(data));
-        setStatusText("Analyzing...");
+        setStatusText("Analyzing with Gemini...");
 
-        const feedback = await ai.feedback(
-            uploadedFile.path,
-            prepareInstructions({ jobTitle, jobDescription, AIResponseFormat })
-        )
-        if (!feedback) return setStatusText('Error: Failed to analyze resume');
-        console.log('Raw feedback object:', JSON.stringify(feedback, null, 2));
-        const feedbackText = typeof feedback.message?.content === 'string' ?
-            feedback.message.content : feedback.message?.content?.[0]?.text;
-        if (!feedbackText) {
-            console.error('Unexpected feedback structure:', feedback);
-            return setStatusText('Error: AI returned an unexpected response. Check console.');
-        }
-        // Strip markdown code fences and extract JSON
-        let jsonText = feedbackText.trim();
-        const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (jsonMatch) jsonText = jsonMatch[1].trim();
+        // Send the PDF as FormData to avoid JSON body size limits
+        const formData = new FormData();
+        formData.append('resume', file);
+        formData.append('jobTitle', jobTitle);
+        formData.append('jobDescription', jobDescription);
+
         try {
-            data.feedback = JSON.parse(jsonText);
-        } catch (e) {
-            console.error('Raw AI response:', feedbackText);
-            return setStatusText('Error: AI returned invalid JSON. Check console for details.');
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                return setStatusText(`Error: ${errData.error || 'Failed to analyze resume'}`);
+            }
+
+            const result = await response.json();
+            const feedbackText = result.content;
+            if (!feedbackText) {
+                console.error('Empty response from Gemini');
+                return setStatusText('Error: AI returned an empty response');
+            }
+
+            console.log('Raw Gemini response:', feedbackText);
+
+            // Strip markdown code fences and extract JSON
+            let jsonText = feedbackText.trim();
+            const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) jsonText = jsonMatch[1].trim();
+
+            try {
+                data.feedback = JSON.parse(jsonText);
+            } catch (e) {
+                console.error('Raw AI response:', feedbackText);
+                return setStatusText('Error: AI returned invalid JSON. Check console for details.');
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+            return setStatusText(`Error: ${err instanceof Error ? err.message : 'Network error'}`);
         }
+
         await kv.set(`resume:${uuid}`, JSON.stringify(data));
         setStatusText('Analysis complete, redirecting ...');
         console.log(data);
