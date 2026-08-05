@@ -2,10 +2,10 @@ import type { Route } from "./+types/api.analyze";
 import { prepareInstructions, AIResponseFormat } from "../../constants";
 
 export async function action({ request }: Route.ActionArgs) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { error: "GEMINI_API_KEY is not set in environment variables" },
+      { error: "OPENAI_API_KEY is not set in environment variables" },
       { status: 500 }
     );
   }
@@ -23,7 +23,7 @@ export async function action({ request }: Route.ActionArgs) {
       );
     }
 
-    // Convert the uploaded file to base64 for Gemini's inline_data
+    // Convert the uploaded file to base64
     const arrayBuffer = await resumeFile.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = resumeFile.type || "application/pdf";
@@ -34,54 +34,58 @@ export async function action({ request }: Route.ActionArgs) {
       AIResponseFormat,
     });
 
-    // Call Gemini API with inline file data
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // Call OpenAI Chat Completions API with file input
+    const openaiUrl = "https://api.openai.com/v1/chat/completions";
 
-    const geminiPayload = {
-      contents: [
+    const openaiPayload = {
+      model: "gpt-4o-mini",
+      messages: [
         {
-          parts: [
+          role: "user",
+          content: [
             {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64,
+              type: "file",
+              file: {
+                filename: resumeFile.name || "resume.pdf",
+                file_data: `data:${mimeType};base64,${base64}`,
               },
             },
             {
+              type: "text",
               text: prompt,
             },
           ],
         },
       ],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 4096,
-      },
+      temperature: 0.4,
+      max_tokens: 4096,
     };
 
-    const geminiResponse = await fetch(geminiUrl, {
+    const openaiResponse = await fetch(openaiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiPayload),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(openaiPayload),
     });
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error("Gemini API error:", errorText);
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      console.error("OpenAI API error:", errorText);
       return Response.json(
-        { error: `Gemini API error: ${geminiResponse.status}` },
+        { error: `OpenAI API error: ${openaiResponse.status}` },
         { status: 502 }
       );
     }
 
-    const geminiData = await geminiResponse.json();
-    const text =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    const openaiData = await openaiResponse.json();
+    const text = openaiData?.choices?.[0]?.message?.content || null;
 
     if (!text) {
-      console.error("Unexpected Gemini response:", JSON.stringify(geminiData));
+      console.error("Unexpected OpenAI response:", JSON.stringify(openaiData));
       return Response.json(
-        { error: "Gemini returned an empty response" },
+        { error: "OpenAI returned an empty response" },
         { status: 502 }
       );
     }
