@@ -19,7 +19,7 @@ const Auth = () => {
     if(auth.isAuthenticated && hasNext) navigate(next);
   },[auth.isAuthenticated, next])
 
-  console.log('isLoading:', isLoading, 'auth:', auth);
+
 
   return (
     <main className="bg-[url('/images/bg-main.svg')] bg-cover min-h-screen flex items-center justify-center">

@@ -83,3 +83,22 @@ export async function convertPdfToImage(
         };
     }
 }
+
+export async function extractTextFromPdf(file: File): Promise<string> {
+    const lib = await loadPdfJs();
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items
+            .filter((item: any) => "str" in item)
+            .map((item: any) => item.str)
+            .join(" ");
+        pages.push(text);
+    }
+
+    return pages.join("\n\n");
+}

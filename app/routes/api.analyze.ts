@@ -2,31 +2,26 @@ import type { Route } from "./+types/api.analyze";
 import { prepareInstructions, AIResponseFormat } from "../../constants";
 
 export async function action({ request }: Route.ActionArgs) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { error: "OPENAI_API_KEY is not set in environment variables" },
+      { error: "GROQ_API_KEY is not set in environment variables" },
       { status: 500 }
     );
   }
 
   try {
     const formData = await request.formData();
-    const resumeFile = formData.get("resume") as File | null;
+    const resumeText = (formData.get("resumeText") as string) || "";
     const jobTitle = (formData.get("jobTitle") as string) || "";
     const jobDescription = (formData.get("jobDescription") as string) || "";
 
-    if (!resumeFile) {
+    if (!resumeText.trim()) {
       return Response.json(
-        { error: "No resume file provided" },
+        { error: "No resume text provided" },
         { status: 400 }
       );
     }
-
-    // Convert the uploaded file to base64
-    const arrayBuffer = await resumeFile.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-    const mimeType = resumeFile.type || "application/pdf";
 
     const prompt = prepareInstructions({
       jobTitle,
@@ -34,65 +29,53 @@ export async function action({ request }: Route.ActionArgs) {
       AIResponseFormat,
     });
 
-    // Call OpenAI Chat Completions API with file input
-    const openaiUrl = "https://api.openai.com/v1/chat/completions";
+    // Call Groq API (OpenAI-compatible)
+    const groqUrl = "https://api.groq.com/openai/v1/chat/completions";
 
-    const openaiPayload = {
-      model: "gpt-4o-mini",
+    const groqPayload = {
+      model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "file",
-              file: {
-                filename: resumeFile.name || "resume.pdf",
-                file_data: `data:${mimeType};base64,${base64}`,
-              },
-            },
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
+          content: `Here is the resume text:\n\n---\n${resumeText}\n---\n\n${prompt}`,
         },
       ],
       temperature: 0.4,
       max_tokens: 4096,
     };
 
-    const openaiResponse = await fetch(openaiUrl, {
+    const groqResponse = await fetch(groqUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(openaiPayload),
+      body: JSON.stringify(groqPayload),
     });
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error("OpenAI API error:", errorText);
+    if (!groqResponse.ok) {
+      const errorText = await groqResponse.text();
+
       return Response.json(
-        { error: `OpenAI API error: ${openaiResponse.status}` },
+        { error: `Groq API error: ${groqResponse.status}` },
         { status: 502 }
       );
     }
 
-    const openaiData = await openaiResponse.json();
-    const text = openaiData?.choices?.[0]?.message?.content || null;
+    const groqData = await groqResponse.json();
+    const text = groqData?.choices?.[0]?.message?.content || null;
 
     if (!text) {
-      console.error("Unexpected OpenAI response:", JSON.stringify(openaiData));
+
       return Response.json(
-        { error: "OpenAI returned an empty response" },
+        { error: "Groq returned an empty response" },
         { status: 502 }
       );
     }
 
     return Response.json({ content: text });
   } catch (err) {
-    console.error("Analyze API error:", err);
+
     return Response.json(
       {
         error:

@@ -26,7 +26,7 @@ const upload = () => {
         setStatusText('Converting to image ...');
         const { convertPdfToImage } = await import("~/lib/pdf2img");
         const imageFile = await convertPdfToImage(file);
-        console.error('PDF conversion result:', imageFile);
+
         if (!imageFile.file) return setStatusText(`Error: ${imageFile.error || 'Failed to convert PDF to image'}`);
 
         setStatusText('Uploading the image');
@@ -35,6 +35,7 @@ const upload = () => {
 
         setStatusText('Preparing data ...');
         const uuid = generateUUID();
+
         const data = {
             id: uuid,
             resumePath: uploadedFile.path,
@@ -43,11 +44,16 @@ const upload = () => {
             feedback: ''
         }
         await kv.set(`resume:${uuid}`, JSON.stringify(data));
-        setStatusText("Analyzing with Gemini...");
 
-        // Send the PDF as FormData to avoid JSON body size limits
+        setStatusText('Extracting resume text...');
+        const { extractTextFromPdf } = await import("~/lib/pdf2img");
+        const resumeText = await extractTextFromPdf(file);
+
+        setStatusText("Analyzing with AI...");
+
+        // Send extracted text instead of the raw PDF
         const formData = new FormData();
-        formData.append('resume', file);
+        formData.append('resumeText', resumeText);
         formData.append('jobTitle', jobTitle);
         formData.append('jobDescription', jobDescription);
 
@@ -65,11 +71,11 @@ const upload = () => {
             const result = await response.json();
             const feedbackText = result.content;
             if (!feedbackText) {
-                console.error('Empty response from Gemini');
+
                 return setStatusText('Error: AI returned an empty response');
             }
 
-            console.log('Raw Gemini response:', feedbackText);
+
 
             // Strip markdown code fences and extract JSON
             let jsonText = feedbackText.trim();
@@ -79,11 +85,11 @@ const upload = () => {
             try {
                 data.feedback = JSON.parse(jsonText);
             } catch (e) {
-                console.error('Raw AI response:', feedbackText);
+
                 return setStatusText('Error: AI returned invalid JSON. Check console for details.');
             }
         } catch (err) {
-            console.error('Fetch error:', err);
+
             return setStatusText(`Error: ${err instanceof Error ? err.message : 'Network error'}`);
         }
 
