@@ -1,87 +1,91 @@
-# Welcome to React Router!
+# AI Resume Analyzer
 
-A modern, production-ready template for building full-stack React applications using React Router.
+A web app that analyzes your resume using AI and gives you actionable feedback — ATS compatibility score, section-by-section breakdowns, and specific tips to improve your chances of landing interviews.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+Upload a PDF, optionally paste a job description, and get a detailed review in seconds.
 
-## Features
+## How It Works
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+1. Sign in through Puter (handles auth, file storage, and key-value storage)
+2. Upload your resume as a PDF
+3. Optionally add a job title and description for tailored feedback
+4. The app extracts text from the PDF client-side, sends it to Groq's API (LLaMA 3.3 70B), and returns structured feedback
+5. View your results on a dedicated review page — resume preview on one side, AI feedback on the other
+
+## Tech Stack
+
+- **Framework**: React Router v8 (SSR mode)
+- **Styling**: Tailwind CSS v4
+- **State Management**: Zustand
+- **Auth & Storage**: Puter.js (authentication, cloud file storage, key-value store)
+- **AI**: Groq API (LLaMA 3.3 70B Versatile)
+- **PDF Handling**: pdfjs-dist for client-side text extraction and image conversion
+
+## Project Structure
+
+```
+app/
+├── routes/
+│   ├── home.tsx          # Dashboard with past resume submissions
+│   ├── upload.tsx        # Upload form and analysis trigger
+│   ├── resume.tsx        # Review page (resume preview + feedback)
+│   ├── Auth.tsx          # Puter authentication
+│   └── api.analyze.ts   # Server-side API route that calls Groq
+├── components/
+│   ├── Summary.tsx       # Overall feedback summary
+│   ├── ATS.tsx           # ATS score and improvement tips
+│   ├── Details.tsx       # Detailed section-by-section review
+│   ├── navbar.tsx        # Navigation bar
+│   ├── FileUploader.tsx  # Drag-and-drop PDF uploader
+│   └── resumecard.tsx    # Resume card for the dashboard
+├── lib/
+│   ├── puter.ts          # Zustand store wrapping Puter.js APIs
+│   ├── pdf2img.ts        # PDF to image conversion + text extraction
+│   └── util.ts           # Helpers (UUID generation, file size formatting)
+constants/
+└── index.ts              # AI prompt templates and response format
+```
 
 ## Getting Started
 
-### Installation
+### Prerequisites
 
-Install the dependencies:
+- Node.js 18+
+- A Groq API key ([get one here](https://console.groq.com/keys))
+
+### Setup
 
 ```bash
 npm install
 ```
 
-### Development
+Create a `.env` file in the root:
 
-Start the development server with HMR:
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### Development
 
 ```bash
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+Open [http://localhost:5173](http://localhost:5173).
 
-## Building for Production
-
-Create a production build:
+### Production Build
 
 ```bash
 npm run build
+npm start
 ```
 
-## Deployment
+## Environment Variables
 
-### Docker Deployment
+| Variable | Description |
+|---|---|
+| `GROQ_API_KEY` | Your Groq API key for resume analysis |
 
-To build and run using Docker:
+## License
 
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+MIT
