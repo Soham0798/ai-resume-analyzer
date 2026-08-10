@@ -59,36 +59,41 @@ const upload = () => {
         formData.append('jobDescription', jobDescription);
 
         try {
-            const response = await fetch('/api/analyze', {
-                method: 'POST',
-                body: formData,
-            });
+            // Start both the API fetch and the 5.5s animation timer
+            const fetchPromise = (async () => {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData,
+                });
 
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                return setStatusText(`Error: ${errData.error || 'Failed to analyze resume'}`);
-            }
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Failed to analyze resume');
+                }
 
-            const result = await response.json();
-            const feedbackText = result.content;
-            if (!feedbackText) {
+                const result = await response.json();
+                const feedbackText = result.content;
+                if (!feedbackText) {
+                    throw new Error('AI returned an empty response');
+                }
 
-                return setStatusText('Error: AI returned an empty response');
-            }
+                // Strip markdown code fences and extract JSON
+                let jsonText = feedbackText.trim();
+                const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+                if (jsonMatch) jsonText = jsonMatch[1].trim();
 
+                try {
+                    data.feedback = JSON.parse(jsonText);
+                } catch (e) {
+                    throw new Error('AI returned invalid JSON. Check console for details.');
+                }
+            })();
 
+            const timerPromise = new Promise(resolve => setTimeout(resolve, 5500));
 
-            // Strip markdown code fences and extract JSON
-            let jsonText = feedbackText.trim();
-            const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (jsonMatch) jsonText = jsonMatch[1].trim();
+            // Wait for both to finish before proceeding
+            await Promise.all([fetchPromise, timerPromise]);
 
-            try {
-                data.feedback = JSON.parse(jsonText);
-            } catch (e) {
-
-                return setStatusText('Error: AI returned invalid JSON. Check console for details.');
-            }
         } catch (err) {
 
             return setStatusText(`Error: ${err instanceof Error ? err.message : 'Network error'}`);
@@ -121,37 +126,48 @@ const upload = () => {
                 <section className="main-section">
                     <div className="page-heading py-16">
                         <h1>Smart feedback for your dream job</h1>
-                        {isProcessing ? (
+                        {isProcessing && (
                             <>
                                 <h2>{statusText}</h2>
                                 <img src="/images/resume-scan.gif" className="w-full " />
                             </>
-                        ) : (
-                            <h2>Drop your resume for an ATS score and improvement tips</h2>
                         )}
                         {!isProcessing && (
-                            <form id='upload-form' onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
-                                <div className="form-div">
-                                    <label htmlFor="company-name">Company Name</label>
-                                    <input type="text" name='company-name' placeholder="Company name" id='company-name' />
-                                </div>
-                                <div className="form-div">
-                                    <label htmlFor="job-title">Job Title</label>
-                                    <input type="text" name='job-title' placeholder="Job Title" id='job-title' />
-                                </div>
-                                <div className="form-div">
-                                    <label htmlFor="job-description">Job Description</label>
-                                    <textarea rows={5} name='job-description' placeholder="Job Description" id='job-description' />
-                                </div>
-                                <div className="form-div">
-                                    <label htmlFor="uploader">Upload Resume</label>
-                                    <FileUploader onFileSelect={handleFileSelect} />
-                                </div>
-                                <button className="primary-button" type="submit">
-                                    Analyze Resume
-                                </button>
-                            </form>
+                            <h2>Drop your resume for an ATS score and improvement tips</h2>
                         )}
+                        <form id='upload-form' onSubmit={handleSubmit} className={`flex flex-col gap-4 mt-8 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <div className="form-div">
+                                <label htmlFor="company-name">Company Name</label>
+                                <input type="text" name='company-name' placeholder="Company name" id='company-name' />
+                            </div>
+                            <div className="form-div">
+                                <label htmlFor="job-title">Job Title</label>
+                                <input type="text" name='job-title' placeholder="Job Title" id='job-title' />
+                            </div>
+                            <div className="form-div">
+                                <label htmlFor="job-description">Job Description</label>
+                                <textarea rows={5} name='job-description' placeholder="Job Description" id='job-description' />
+                            </div>
+                            <div className="form-div">
+                                <label htmlFor="uploader">Upload Resume</label>
+                                <FileUploader onFileSelect={handleFileSelect} />
+                            </div>
+                            
+                            <div className="w-full flex justify-center mt-4">
+                                <button className={`analyze-button ${isProcessing ? 'is-analyzing' : ''}`} type="submit" disabled={isProcessing}>
+                                    <span className="analyze-text">Analyze Resume</span>
+                                    <div className="analyze-arrow">
+                                        <div className="arrow-line before"></div>
+                                        <div className="arrow-line after"></div>
+                                    </div>
+                                    <div className="analyze-success">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </section>
             </main>
