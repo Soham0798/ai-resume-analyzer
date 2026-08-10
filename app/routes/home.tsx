@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { usePuterStore } from "~/lib/puter"
 import resume from "./resume";
+import BackgroundLayout from "~/components/BackgroundLayout";
 
 
 export function meta({ }: Route.MetaArgs) {
@@ -44,39 +45,43 @@ export default function Home() {
   }, []);
 
 
-  return <main className="bg-[url('/images/bg-main.svg')] bg-cover">
-    <NavBar />
-    <section className="main-section">
-      <div className="page-heading py-16">
-        <h1>Track Your Applications & Resume Ratings</h1>
-        {!loadingResumes && resumes?.length === 0 ? (
-          <h2>No resumes found. Upload your first resume to get feedback.</h2>
-        ) : (
-          <h2>Review Your submissions and check AI-powered feedback</h2>
-        )}
-      </div>
-      {loadingResumes && (
-        <div className="flex flex-col items-center justify-center">
-          <img src="/images/resume-scan-2.gif" className="w-[200px]" />
-        </div>
-      )}
-
-      {!loadingResumes && resumes.length > 0 && (
-        <div className="resumes-section">
-          {resumes.map((resume) => (
-            <div>
-              <ResumeCard key={resume.id} resume={resume} />
+  return (
+    <BackgroundLayout>
+      <main>
+        <NavBar />
+        <section className="main-section">
+          <div className="page-heading py-16">
+            <h1>Track Your Applications & Resume Ratings</h1>
+            {!loadingResumes && resumes?.length === 0 ? (
+              <h2>No resumes found. Upload your first resume to get feedback.</h2>
+            ) : (
+              <h2>Review Your submissions and check AI-powered feedback</h2>
+            )}
+          </div>
+          {loadingResumes && (
+            <div className="flex flex-col items-center justify-center">
+              <img src="/images/resume-scan-2.gif" className="w-[200px]" />
             </div>
-          ))}
-        </div>
-      )}
-      {!loadingResumes && resumes?.length === 0 && (
-        <div className="flex flex-col items-center justify-center mt-10 gap-4">
-          <Link to="/upload" className="primary-button w-fit text-xl font-semibold">
-            Upload Resume
-          </Link>
-        </div>
-      )}
-    </section>
-  </main>
+          )}
+
+          {!loadingResumes && resumes.length > 0 && (
+            <div className="resumes-section">
+              {resumes.map((resume) => (
+                <div>
+                  <ResumeCard key={resume.id} resume={resume} />
+                </div>
+              ))}
+            </div>
+          )}
+          {!loadingResumes && resumes?.length === 0 && (
+            <div className="flex flex-col items-center justify-center mt-10 gap-4">
+              <Link to="/upload" className="primary-button w-fit text-xl font-semibold">
+                Upload Resume
+              </Link>
+            </div>
+          )}
+        </section>
+      </main>
+    </BackgroundLayout>
+  )
 }
