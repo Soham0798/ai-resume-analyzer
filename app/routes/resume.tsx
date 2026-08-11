@@ -8,7 +8,7 @@ import Details from "~/components/Details";
 import BackgroundLayout from "~/components/BackgroundLayout";
 
 export const meta = () => ([
-    { title: 'ResumeAnalyse | Review' },
+    { title: 'Resume Analyze | Review' },
     { name: 'description', content: 'Detailed Overview of your resume' },
 ])
 

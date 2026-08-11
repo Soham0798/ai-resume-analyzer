@@ -10,7 +10,7 @@ import BackgroundLayout from "~/components/BackgroundLayout";
 
 export function meta({ }: Route.MetaArgs) {
   return [
-    { title: "Resumeanalyze" },
+    { title: "Resume Analyze" },
     { name: "description", content: "Smart feedback for your resume" },
   ];
 }
