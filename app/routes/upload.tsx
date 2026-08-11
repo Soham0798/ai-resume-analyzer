@@ -59,40 +59,36 @@ const upload = () => {
         formData.append('jobDescription', jobDescription);
 
         try {
-            // Start both the API fetch and the 5.5s animation timer
-            const fetchPromise = (async () => {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    body: formData,
-                });
+            // Wait for the 5.5s animation timer to finish
+            await new Promise(resolve => setTimeout(resolve, 5500));
 
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error || 'Failed to analyze resume');
-                }
+            // Then make the API fetch
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                body: formData,
+            });
 
-                const result = await response.json();
-                const feedbackText = result.content;
-                if (!feedbackText) {
-                    throw new Error('AI returned an empty response');
-                }
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to analyze resume');
+            }
 
-                // Strip markdown code fences and extract JSON
-                let jsonText = feedbackText.trim();
-                const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-                if (jsonMatch) jsonText = jsonMatch[1].trim();
+            const result = await response.json();
+            const feedbackText = result.content;
+            if (!feedbackText) {
+                throw new Error('AI returned an empty response');
+            }
 
-                try {
-                    data.feedback = JSON.parse(jsonText);
-                } catch (e) {
-                    throw new Error('AI returned invalid JSON. Check console for details.');
-                }
-            })();
+            // Strip markdown code fences and extract JSON
+            let jsonText = feedbackText.trim();
+            const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) jsonText = jsonMatch[1].trim();
 
-            const timerPromise = new Promise(resolve => setTimeout(resolve, 5500));
-
-            // Wait for both to finish before proceeding
-            await Promise.all([fetchPromise, timerPromise]);
+            try {
+                data.feedback = JSON.parse(jsonText);
+            } catch (e) {
+                throw new Error('AI returned invalid JSON. Check console for details.');
+            }
 
         } catch (err) {
 
@@ -127,30 +123,32 @@ const upload = () => {
                     <div className="page-heading py-16">
                         <h1>Smart feedback for your dream job</h1>
                         {isProcessing && (
-                            <>
+                            <div className="flex flex-col items-center justify-center w-full my-4">
                                 <h2>{statusText}</h2>
-                                <img src="/images/resume-scan.gif" className="w-full " />
-                            </>
+                                <img src="/images/resume-scan.gif" className="w-[250px] object-contain" alt="Scanning Resume" />
+                            </div>
                         )}
                         {!isProcessing && (
                             <h2>Drop your resume for an ATS score and improvement tips</h2>
                         )}
                         <form id='upload-form' onSubmit={handleSubmit} className={`flex flex-col gap-4 mt-8 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <div className="form-div">
-                                <label htmlFor="company-name">Company Name</label>
-                                <input type="text" name='company-name' placeholder="Company name" id='company-name' />
-                            </div>
-                            <div className="form-div">
-                                <label htmlFor="job-title">Job Title</label>
-                                <input type="text" name='job-title' placeholder="Job Title" id='job-title' />
-                            </div>
-                            <div className="form-div">
-                                <label htmlFor="job-description">Job Description</label>
-                                <textarea rows={5} name='job-description' placeholder="Job Description" id='job-description' />
-                            </div>
-                            <div className="form-div">
-                                <label htmlFor="uploader">Upload Resume</label>
-                                <FileUploader onFileSelect={handleFileSelect} />
+                            <div className={`w-full flex flex-col gap-4 ${isProcessing ? 'hidden' : ''}`}>
+                                <div className="form-div">
+                                    <label htmlFor="company-name">Company Name</label>
+                                    <input type="text" name='company-name' placeholder="Company name" id='company-name' />
+                                </div>
+                                <div className="form-div">
+                                    <label htmlFor="job-title">Job Title</label>
+                                    <input type="text" name='job-title' placeholder="Job Title" id='job-title' />
+                                </div>
+                                <div className="form-div">
+                                    <label htmlFor="job-description">Job Description</label>
+                                    <textarea rows={5} name='job-description' placeholder="Job Description" id='job-description' />
+                                </div>
+                                <div className="form-div">
+                                    <label htmlFor="uploader">Upload Resume</label>
+                                    <FileUploader onFileSelect={handleFileSelect} />
+                                </div>
                             </div>
                             
                             <div className="w-full flex justify-center mt-4">

@@ -36,11 +36,11 @@ const ResumeCard = ({ resume: { id, companyName, jobTitle, feedback, imagePath }
             </div>
             {resumeUrl && (
                 <div className="gradient-border animate-in duration-1000">
-                    <div className="w-full h-full">
+                    <div className="w-full h-full overflow-hidden rounded-xl">
                         <img
                             src={resumeUrl}
                             alt="resume"
-                            className="w-full h-{350px} max-sm:h-[200px] object-cover object-top"
+                            className="w-full h-[350px] max-sm:h-[200px] object-cover object-top"
                         />
                     </div>
                 </div>
